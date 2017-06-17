@@ -1,11 +1,13 @@
-require "net/http"
-require 'nokogiri'
 require 'google/apis/calendar_v3'
 require 'googleauth'
 require 'googleauth/stores/file_token_store'
 require 'trollop'
 require 'fileutils'
+require "net/http"
+require 'nokogiri'
+require "openssl"
 
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 opts = Trollop::options do
   banner "Maakt voor ilva-afvalophalingen Google Calendar events aan."
   opt :streetnis, "ID van straat", type: :integer
@@ -25,11 +27,11 @@ events = []
       current = []
       td.css("a").each do |i|
         soort = i.css("img").attribute("alt")
-        if !["Grofhuisvuil", "Snoeihout"].include?(soort.value)
+        if !["grofhuisvuil", "snoeihout"].include?(soort.value.downcase.strip)
           current.push(soort)
+      		events.push(["#{year}-#{month}-#{day}", current.join("\n")])
         end
       end
-      events.push(["#{year}-#{month}-#{day}", current.join("\n")])
     end
   end
 end
@@ -88,6 +90,8 @@ events.each do |e|
     },  
     "color_id": opts[:color].to_s
   })
+
   result = service.insert_event('primary', event)
+  sleep 200
   puts "Event created: #{result.html_link}"
 end
